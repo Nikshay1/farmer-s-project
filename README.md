@@ -25,8 +25,8 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the repository:**
     ```bash
-    git clone [your-repo-url]
-    cd your-crop-doctor-app
+    git clone https://github.com/Nikshay1/farmers-project
+    cd farmer_project
     ```
 2.  **Install dependencies:**
     This project uses the following key dependencies for its functionality:
