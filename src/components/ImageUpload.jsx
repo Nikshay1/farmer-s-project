@@ -26,18 +26,18 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
 
     try {
       // 1. Upload image to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('crop-pictures') // Ensure this is your bucket name
+      const { /* data: uploadData, */ error: uploadError } = await supabase.storage // uploadData is unused, commented out to remove linter warning
+        .from('crop-pictures') 
         .upload(filePath, file, {
-            cacheControl: '3600', // Optional: cache control
-            upsert: false // Optional: do not overwrite if file exists
+            cacheControl: '3600', 
+            upsert: false 
         });
 
       if (uploadError) throw uploadError;
 
       // 2. Get the public URL of the uploaded image
       const { data: urlData } = supabase.storage
-        .from('crop-pictures') // Ensure this is your bucket name
+        .from('crop-pictures')
         .getPublicUrl(filePath);
 
       if (!urlData || !urlData.publicUrl) {
@@ -46,18 +46,27 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
       const imageUrl = urlData.publicUrl;
 
       // 3. Save image metadata to Supabase Database
-      const { data: dbData, error: dbError } = await supabase
-        .from('crop_images') // Ensure this is your table name
-        .insert([{
-          image_url: imageUrl,
-          file_name: file.name,
-          ai_analysis_completed: false, // Mark as not analyzed yet
-          // user_id: supabase.auth.user()?.id // Uncomment if you implement Supabase auth
-        }])
-        .select() // Important to get the inserted row back, especially the ID
-        .single(); // Assuming you insert one row and want it back
+      // Ensure this object matches your 'crop_images' table columns EXACTLY
+      const insertPayload = {
+        image_url: imageUrl,    // This is TEXT NOT NULL
+        image_name: file.name,  // This is TEXT NULLABLE (matching our schema)
+        analysis_result: null   // This is JSONB NULLABLE (matching our schema), explicitly set to null
+        // If you have an 'ai_analysis_completed' BOOLEAN column, you can add it here:
+        // ai_analysis_completed: false, 
+      };
 
-      if (dbError) throw dbError;
+      console.log('Attempting to insert:', JSON.stringify(insertPayload, null, 2)); // Add this for debugging
+
+      const { data: dbData, error: dbError } = await supabase
+        .from('crop_images') 
+        .insert([insertPayload]) // Use the payload object
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error('Supabase DB Error:', dbError); // Log the detailed DB error
+        throw dbError;
+      }
 
       setMessage('Image uploaded successfully! AI analysis will begin shortly.');
       setUploading(false);

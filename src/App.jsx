@@ -26,12 +26,12 @@ function App() {
   // This function is called after an image is successfully uploaded and its DB record created.
   const handleImageUploadedAndRecordCreated = async (imageRecord) => {
     if (!genAI) {
-        setAnalysisMessage('Google AI SDK not initialized. Check API Key.');
-        setIsAnalyzing(false);
-        // Update DB record to indicate error
-        await updateDatabaseWithError(imageRecord.id, 'Google AI SDK not initialized. Check API Key.');
-        setRefreshHistoryKey(prev => prev + 1);
-        return;
+      setAnalysisMessage('Google AI SDK not initialized. Check API Key.');
+      setIsAnalyzing(false);
+      // Update DB record to indicate error
+      await updateDatabaseWithError(imageRecord.id, 'Google AI SDK not initialized. Check API Key.');
+      setRefreshHistoryKey(prev => prev + 1);
+      return;
     }
     if (!imageRecord || !imageRecord.id || !imageRecord.image_url) {
       setAnalysisMessage('Invalid image record received for analysis.');
@@ -43,7 +43,7 @@ function App() {
     setAnalysisMessage(`Analyzing image: ${imageRecord.file_name}...`);
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = `
         You are an agricultural expert. Analyze the following image of a crop.
@@ -66,7 +66,7 @@ function App() {
         throw new Error(`Failed to fetch image for analysis (status: ${imageResponse.status})`);
       }
       const imageBlob = await imageResponse.blob();
-      
+
       // Convert blob to base64
       const imageBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -87,17 +87,22 @@ function App() {
       // Generate content
       const result = await model.generateContent([prompt, ...imageParts]);
       const aiResponseRaw = await result.response.text();
-      
+
       let aiResponseJson;
       try {
         // Attempt to parse the JSON from the response
         // The model might sometimes include ```json ... ``` markers.
         const jsonStringMatch = aiResponseRaw.match(/```json\s*([\s\S]*?)\s*```/);
+        let jsonString = aiResponseRaw;
         if (jsonStringMatch && jsonStringMatch[1]) {
-          aiResponseJson = JSON.parse(jsonStringMatch[1]);
-        } else {
-          aiResponseJson = JSON.parse(aiResponseRaw); 
+          jsonString = jsonStringMatch[1];
         }
+        // Trim whitespace and check if the string is empty or not valid JSON before parsing
+        jsonString = jsonString.trim();
+        if (!jsonString) {
+          throw new Error("AI response was empty.");
+        }
+        aiResponseJson = JSON.parse(jsonString);
       } catch (parseError) {
         console.error("Failed to parse AI response as JSON:", aiResponseRaw, parseError);
         throw new Error("AI response was not valid JSON. Raw response: " + aiResponseRaw);
@@ -131,14 +136,14 @@ function App() {
 
   const updateDatabaseWithError = async (recordId, errorMessage) => {
     const { error: dbUpdateError } = await supabase
-        .from('crop_images')
-        .update({ 
-            ai_analysis_completed: false, // Mark as failed
-            ai_error_message: errorMessage.substring(0, 500) // Limit error message length
-        })
-        .eq('id', recordId);
+      .from('crop_images')
+      .update({
+        ai_analysis_completed: false, // Mark as failed
+        ai_error_message: errorMessage.substring(0, 500) // Limit error message length
+      })
+      .eq('id', recordId);
     if (dbUpdateError) {
-        console.error("Failed to update DB with error state:", dbUpdateError);
+      console.error("Failed to update DB with error state:", dbUpdateError);
     }
   };
 
@@ -147,7 +152,7 @@ function App() {
     setIsAnalyzing(false);
     // No need to refresh history here unless an empty record was created and needs showing an error
   };
-  
+
   const handleUploadStart = () => {
     setAnalysisMessage('Upload in progress...');
     setIsAnalyzing(true); // Can use isAnalyzing to show a general loading state
@@ -159,24 +164,24 @@ function App() {
         <h1>🌿 Crop Doctor AI 🌾</h1>
         <p>Upload an image of your crop to detect diseases and get cure recommendations.</p>
         <p className="api-warning">
-            <strong>Important:</strong> This demo uses client-side API calls for Google AI for simplicity. 
-            For a production app, move AI API calls to a secure backend (like Supabase Edge Functions) to protect your API key.
+          <strong>Important:</strong> This demo uses client-side API calls for Google AI for simplicity.
+          For a production app, move AI API calls to a secure backend (like Supabase Edge Functions) to protect your API key.
         </p>
       </header>
-      
+
       <main>
-        <ImageUpload 
-            onUploadSuccess={handleImageUploadedAndRecordCreated} 
-            onUploadError={handleUploadError}
-            onUploadStart={handleUploadStart}
+        <ImageUpload
+          onUploadSuccess={handleImageUploadedAndRecordCreated}
+          onUploadError={handleUploadError}
+          onUploadStart={handleUploadStart}
         />
-        
+
         {analysisMessage && (
           <p className={`status-message ${isAnalyzing ? 'neutral-message' : (analysisMessage.includes('Error') || analysisMessage.includes('failed') ? 'error-message' : 'success-message')}`}>
             {analysisMessage}
           </p>
         )}
-        
+
         <History refreshTrigger={refreshHistoryKey} />
       </main>
 
