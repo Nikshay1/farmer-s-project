@@ -58,12 +58,13 @@ function History({ refreshTrigger }) { // refreshTrigger to force re-fetch
                 {item.ai_analysis_completed === null && !item.ai_error_message && (
                     <p className="status-pending"><strong>Status:</strong> Analysis pending or in progress...</p>
                 )}
-                {item.ai_analysis_completed === true && (
+                {item.ai_analysis_completed === true && item.analysis_result && (
                   <div className="analysis-results">
                     <h4>AI Analysis:</h4>
-                    <p><strong>Disease:</strong> {item.disease_name || 'Not identified'}</p>
-                    <p><strong>Cure/Management:</strong> {item.cure_instructions || 'No specific instructions provided.'}</p>
-                    <p><strong>Next Steps (if not curable):</strong> {item.next_steps_if_not_curable || 'No specific next steps provided.'}</p>
+                    <p><strong>Disease:</strong> {item.analysis_result.disease_name || 'Not identified'}</p>
+                    <p><strong>Cure/Management:</strong> {item.analysis_result.cure_instructions || 'No specific instructions provided.'}</p>
+                    {/* If you add next_steps_if_not_curable to your AI response JSON, you can display it like this: */}
+                    {/* <p><strong>Next Steps:</strong> {item.analysis_result.next_steps_if_not_curable || 'No specific next steps provided.'}</p> */}
                   </div>
                 )}
                 {item.ai_analysis_completed === false && !item.ai_error_message && (

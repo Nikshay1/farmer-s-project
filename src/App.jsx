@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import ImageUpload from './components/ImageUpload';
 import History from './components/History';
-import { supabase } from './supabaseClient';
+import { supabase } from './supabaseClient'; // Ensure this path is correct
 import './index.css'; // Import global styles
 
 // Get Gemini API Key from environment variables
@@ -12,7 +12,7 @@ if (!GEMINI_API_KEY) {
   console.error(
     "Gemini API Key is missing. Make sure you have a .env file with VITE_GEMINI_API_KEY."
   );
-  // You might want to display a message to the user or disable AI functionality
+  // In a real app, you might disable AI functionality or show a prominent error to the user
 }
 
 // Initialize GoogleGenerativeAI client if API key is available
@@ -26,10 +26,11 @@ function App() {
   // This function is called after an image is successfully uploaded and its DB record created.
   const handleImageUploadedAndRecordCreated = async (imageRecord) => {
     if (!genAI) {
-      setAnalysisMessage('Google AI SDK not initialized. Check API Key.');
+      const errorMessage = 'Google AI SDK not initialized. Check API Key.';
+      setAnalysisMessage(errorMessage);
       setIsAnalyzing(false);
       // Update DB record to indicate error
-      await updateDatabaseWithError(imageRecord.id, 'Google AI SDK not initialized. Check API Key.');
+      await updateDatabaseWithError(imageRecord.id, errorMessage);
       setRefreshHistoryKey(prev => prev + 1);
       return;
     }
@@ -45,20 +46,20 @@ function App() {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+      // PROMPT MODIFICATION START
       const prompt = `
         You are an agricultural expert. Analyze the following image of a crop.
-        Your response MUST be a JSON object with the following keys: "disease_name", "cure_instructions", "next_steps_if_not_curable".
+        Your response MUST be a JSON object with the following keys: "disease_name", "cure_instructions".
         - "disease_name": Identify the likely disease. If healthy or unclear, state that.
         - "cure_instructions": Provide concise, actionable steps to treat the identified disease. Mention organic and chemical options if applicable.
-        - "next_steps_if_not_curable": If the disease is severe or untreatable, suggest what the farmer should do next (e.g., remove plants, soil treatment, future prevention).
 
         Example JSON response:
         {
           "disease_name": "Powdery Mildew",
-          "cure_instructions": "Increase air circulation. Apply neem oil or a sulfur-based fungicide. Remove severely affected leaves.",
-          "next_steps_if_not_curable": "If widespread and severe, remove and destroy infected plants to prevent spread. Rotate crops next season."
+          "cure_instructions": "Increase air circulation. Apply neem oil or a sulfur-based fungicide. Remove severely affected leaves."
         }
       `;
+      // PROMPT MODIFICATION END
 
       // Fetch the image data as base64
       const imageResponse = await fetch(imageRecord.image_url);
@@ -112,11 +113,9 @@ function App() {
       const { error: updateError } = await supabase
         .from('crop_images')
         .update({
-          disease_name: aiResponseJson.disease_name,
-          cure_instructions: aiResponseJson.cure_instructions,
-          next_steps_if_not_curable: aiResponseJson.next_steps_if_not_curable,
-          ai_analysis_completed: true,
-          ai_error_message: null, // Clear any previous error
+          analysis_result: aiResponseJson, // Corrected assignment
+          ai_analysis_completed: true, // Mark as successful
+          ai_error_message: null // Clear any previous error
         })
         .eq('id', imageRecord.id);
 
