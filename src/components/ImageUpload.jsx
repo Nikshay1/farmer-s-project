@@ -24,9 +24,10 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
     const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
 
     try {
-      // Step 1: Upload image to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('crop-pictures')
+      // 1. Upload file to Supabase Storage
+      const { error: uploadError } = await supabase
+        .storage
+        .from('crop-pictures') // ✅ correct bucket
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false,
@@ -36,7 +37,9 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
         throw new Error('Storage upload failed: ' + uploadError.message);
       }
 
-      // Step 2: Get public URL
+      console.log('✅ File uploaded to storage:', fileName);
+
+      // 2. Get public URL of the file
       const { data: urlData, error: urlError } = supabase
         .storage
         .from('crop-pictures')
@@ -47,8 +50,9 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
       }
 
       const publicUrl = urlData.publicUrl;
+      console.log('🌐 Public URL:', publicUrl);
 
-      // Step 3: Insert into Supabase DB (crop_images table)
+      // 3. Insert into crop_images table
       const insertPayload = {
         image_url: publicUrl,
         file_name: file.name,
@@ -66,12 +70,14 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
         throw new Error('Database insert failed: ' + dbError.message);
       }
 
+      console.log('✅ Inserted into DB:', dbData);
+
       setMessage('Image uploaded! Analysis will begin shortly.');
       setFile(null);
       setUploading(false);
       if (onUploadSuccess) onUploadSuccess(dbData);
     } catch (err) {
-      console.error('Upload Error:', err.message);
+      console.error('🚨 Upload Error:', err);
       setMessage(`Upload failed: ${err.message}`);
       setUploading(false);
       if (onUploadError) onUploadError(err.message);
