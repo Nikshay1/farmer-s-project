@@ -22,14 +22,12 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
     if (onUploadStart) onUploadStart();
 
     const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-    const filePath = `${fileName}`;
 
     try {
-      // 1. Upload to Supabase Storage
-      const { error: uploadError } = await supabase
-        .storage
+      // Step 1: Upload image to Supabase Storage
+      const { error: uploadError } = await supabase.storage
         .from('crop-pictures')
-        .upload(filePath, file, {
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false,
         });
@@ -38,22 +36,19 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
         throw new Error('Storage upload failed: ' + uploadError.message);
       }
 
-      console.log('✅ File uploaded to storage:', filePath);
-
-      // 2. Get public URL
+      // Step 2: Get public URL
       const { data: urlData, error: urlError } = supabase
         .storage
         .from('crop-pictures')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       if (urlError || !urlData?.publicUrl) {
         throw new Error('Failed to get public URL.');
       }
 
       const publicUrl = urlData.publicUrl;
-      console.log('🌐 Public URL:', publicUrl);
 
-      // 3. Insert metadata into crop_images table
+      // Step 3: Insert into Supabase DB (crop_images table)
       const insertPayload = {
         image_url: publicUrl,
         file_name: file.name,
@@ -68,18 +63,15 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
         .single();
 
       if (dbError) {
-        console.error('❌ DB Insert Failed:', dbError);
         throw new Error('Database insert failed: ' + dbError.message);
       }
 
-      console.log('✅ Inserted into DB:', dbData);
-
       setMessage('Image uploaded! Analysis will begin shortly.');
-      setUploading(false);
       setFile(null);
+      setUploading(false);
       if (onUploadSuccess) onUploadSuccess(dbData);
     } catch (err) {
-      console.error('🚨 Upload Error:', err);
+      console.error('Upload Error:', err.message);
       setMessage(`Upload failed: ${err.message}`);
       setUploading(false);
       if (onUploadError) onUploadError(err.message);
