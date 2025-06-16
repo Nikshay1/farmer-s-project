@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
-function History({ refreshTrigger }) { // refreshTrigger to force re-fetch
+function History({ refreshTrigger }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,16 +11,14 @@ function History({ refreshTrigger }) { // refreshTrigger to force re-fetch
       setLoading(true);
       setError(null);
       try {
-        // If you implement auth, you would filter by user_id:
-        // .eq('user_id', supabase.auth.user()?.id)
         const { data, error: fetchError } = await supabase
-          .from('crop_images') // Ensure this is your table name
+          .from('crop_images')
           .select('*')
-          .order('created_at', { ascending: false }) // Show newest first
-          .limit(20); // Optional: limit the number of results
+          .order('created_at', { ascending: false })
+          .limit(20);
 
         if (fetchError) throw fetchError;
-        
+
         setHistory(data || []);
       } catch (err) {
         console.error('Error fetching history:', err);
@@ -31,7 +29,7 @@ function History({ refreshTrigger }) { // refreshTrigger to force re-fetch
     };
 
     fetchHistory();
-  }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
+  }, [refreshTrigger]);
 
   if (loading) return <p>Loading history...</p>;
   if (error) return <p className="error-message">Error loading history: {error}</p>;
@@ -49,27 +47,30 @@ function History({ refreshTrigger }) { // refreshTrigger to force re-fetch
                 <img 
                   src={item.image_url} 
                   alt={item.file_name || 'Uploaded crop'} 
-                  onError={(e) => { e.target.style.display='none'; /* Hide if image fails to load */ }}
+                  onError={(e) => { e.target.style.display='none'; }}
                 />
               </div>
               <div className="history-item-details">
                 <p><strong>Uploaded:</strong> {new Date(item.created_at).toLocaleString()}</p>
                 <p><strong>File:</strong> {item.file_name || 'N/A'}</p>
+
                 {item.ai_analysis_completed === null && !item.ai_error_message && (
-                    <p className="status-pending"><strong>Status:</strong> Analysis pending or in progress...</p>
+                  <p className="status-pending"><strong>Status:</strong> Analysis pending or in progress...</p>
                 )}
-                {item.ai_analysis_completed === true && item.analysis_result && (
+
+                {item.ai_analysis_completed === true && (
                   <div className="analysis-results">
                     <h4>AI Analysis:</h4>
-                    <p><strong>Disease:</strong> {item.analysis_result.disease_name || 'Not identified'}</p>
-                    <p><strong>Cure/Management:</strong> {item.analysis_result.cure_instructions || 'No specific instructions provided.'}</p>
-                    {/* If you add next_steps_if_not_curable to your AI response JSON, you can display it like this: */}
-                    {/* <p><strong>Next Steps:</strong> {item.analysis_result.next_steps_if_not_curable || 'No specific next steps provided.'}</p> */}
+                    <p><strong>Disease:</strong> {item.disease || 'Not identified'}</p>
+                    <p><strong>Cure/Management:</strong> {item.cure_instructions || 'No specific instructions provided.'}</p>
+                    <p><strong>Next Steps:</strong> {item.next_step_if_not_curable || 'No specific next steps provided.'}</p>
                   </div>
                 )}
+
                 {item.ai_analysis_completed === false && !item.ai_error_message && (
-                    <p className="status-pending"><strong>Status:</strong> Analysis initiated...</p>
+                  <p className="status-pending"><strong>Status:</strong> Analysis initiated...</p>
                 )}
+
                 {item.ai_error_message && (
                   <p className="error-message"><strong>Analysis Error:</strong> {item.ai_error_message}</p>
                 )}
