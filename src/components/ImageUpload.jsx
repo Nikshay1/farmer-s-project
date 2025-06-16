@@ -26,7 +26,7 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
     try {
       // Step 1: Upload image to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('crop_images')
+        .from('crop-pictures')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false,
@@ -39,7 +39,7 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
       // Step 2: Get public URL
       const { data: urlData, error: urlError } = supabase
         .storage
-        .from('crop_images')
+        .from('crop-pictures')
         .getPublicUrl(fileName);
 
       if (urlError || !urlData?.publicUrl) {
