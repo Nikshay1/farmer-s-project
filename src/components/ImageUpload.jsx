@@ -48,12 +48,13 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
       // 3. Save image metadata to Supabase Database
       // Ensure this object matches your 'crop_images' table columns EXACTLY
       const insertPayload = {
-        image_url: imageUrl,    // This is TEXT NOT NULL
-        file_name: file.name,  // This is TEXT NULLABLE (matching our schema)
-        analysis_result: null   // This is JSONB NULLABLE (matching our schema), explicitly set to null
-        // If you have an 'ai_analysis_completed' BOOLEAN column, you can add it here:
-        // ai_analysis_completed: false, 
-      };
+  image_url: imageUrl,
+  file_name: file.name,
+  created_at: new Date().toISOString(),
+  ai_analysis_completed: false,
+  analysis_result: null
+};
+
 
       console.log('Attempting to insert:', JSON.stringify(insertPayload, null, 2)); // Add this for debugging
 
