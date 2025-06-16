@@ -19,6 +19,22 @@ if (!GEMINI_API_KEY) {
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 function App() {
+  import { useEffect } from 'react';
+import { supabase } from './supabaseClient';
+
+useEffect(() => {
+  const testSupabaseConnection = async () => {
+    const { data, error } = await supabase.from('crop_images').select('*').limit(1);
+    if (error) {
+      console.error('❌ Supabase connection failed:', error.message);
+    } else {
+      console.log('✅ Supabase is connected! Data:', data);
+    }
+  };
+
+  testSupabaseConnection();
+}, []);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState('');
   const [refreshHistoryKey, setRefreshHistoryKey] = useState(0); // To trigger history refresh
