@@ -1,28 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
 function App() {
-  const [connectionStatus, setConnectionStatus] = useState('');
+  const [status, setStatus] = useState("Checking connection...");
 
   useEffect(() => {
-    const testSupabaseConnection = async () => {
-      const { data, error } = await supabase.from('crop_images').select('*').limit(1);
+    const checkSupabase = async () => {
+      const { data, error } = await supabase.from("crop_images").select("*").limit(1);
       if (error) {
-        console.error('❌ Supabase connection failed:', error.message);
-        setConnectionStatus(`❌ Supabase connection failed: ${error.message}`);
+        console.error("❌ Supabase connection error:", error.message);
+        setStatus(`❌ Connection failed: ${error.message}`);
       } else {
-        console.log('✅ Supabase is connected! Sample data:', data);
-        setConnectionStatus('✅ Supabase is connected!');
+        console.log("✅ Supabase connected. Sample data:", data);
+        setStatus("✅ Supabase connected!");
       }
     };
-
-    testSupabaseConnection();
+    checkSupabase();
   }, []);
 
   return (
     <div>
       <h1>🌿 Crop Doctor AI 🌾</h1>
-      <p>{connectionStatus || 'Checking Supabase connection...'}</p>
+      <p>{status}</p>
     </div>
   );
 }
