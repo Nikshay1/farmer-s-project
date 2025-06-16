@@ -35,6 +35,7 @@ useEffect(() => {
   testSupabaseConnection();
 }, []);
 
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState('');
   const [refreshHistoryKey, setRefreshHistoryKey] = useState(0); // To trigger history refresh
