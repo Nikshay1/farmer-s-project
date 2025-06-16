@@ -8,7 +8,7 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
 
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
-    setMessage(''); // Clear previous messages
+    setMessage('');
   };
 
   const handleUpload = async () => {
@@ -21,63 +21,65 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
     setMessage('Uploading image...');
     if (onUploadStart) onUploadStart();
 
-    const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`; // Sanitize file name
-    const filePath = `${fileName}`; // You can add user-specific folders here if you implement auth
+    const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+    const filePath = `${fileName}`;
 
     try {
-      // 1. Upload image to Supabase Storage
-      const { /* data: uploadData, */ error: uploadError } = await supabase.storage // uploadData is unused, commented out to remove linter warning
-        .from('crop-pictures') 
+      // 1. Upload to Supabase Storage
+      const { error: uploadError } = await supabase
+        .storage
+        .from('crop-pictures')
         .upload(filePath, file, {
-            cacheControl: '3600', 
-            upsert: false 
+          cacheControl: '3600',
+          upsert: false,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw new Error('Storage upload failed: ' + uploadError.message);
+      }
 
-      // 2. Get the public URL of the uploaded image
-      const { data: urlData } = supabase.storage
+      console.log('✅ File uploaded to storage:', filePath);
+
+      // 2. Get public URL
+      const { data: urlData, error: urlError } = supabase
+        .storage
         .from('crop-pictures')
         .getPublicUrl(filePath);
 
-      if (!urlData || !urlData.publicUrl) {
-        throw new Error('Could not get public URL for the uploaded image.');
+      if (urlError || !urlData?.publicUrl) {
+        throw new Error('Failed to get public URL.');
       }
-      const imageUrl = urlData.publicUrl;
 
-      // 3. Save image metadata to Supabase Database
-      // Ensure this object matches your 'crop_images' table columns EXACTLY
+      const publicUrl = urlData.publicUrl;
+      console.log('🌐 Public URL:', publicUrl);
+
+      // 3. Insert metadata into crop_images table
       const insertPayload = {
-  image_url: imageUrl,
-  file_name: file.name,
-  created_at: new Date().toISOString(),
-  ai_analysis_completed: false,
-  analysis_result: null
-};
-
-
-      console.log('Attempting to insert:', JSON.stringify(insertPayload, null, 2)); // Add this for debugging
+        image_url: publicUrl,
+        file_name: file.name,
+        analysis_result: null,
+        ai_analysis_completed: false,
+      };
 
       const { data: dbData, error: dbError } = await supabase
-        .from('crop_images') 
-        .insert([insertPayload]) // Use the payload object
+        .from('crop_images')
+        .insert([insertPayload])
         .select()
         .single();
 
       if (dbError) {
-        console.error('Supabase DB Error:', dbError); // Log the detailed DB error
-        throw dbError;
+        console.error('❌ DB Insert Failed:', dbError);
+        throw new Error('Database insert failed: ' + dbError.message);
       }
 
-      setMessage('Image uploaded successfully! AI analysis will begin shortly.');
+      console.log('✅ Inserted into DB:', dbData);
+
+      setMessage('Image uploaded! Analysis will begin shortly.');
       setUploading(false);
-      if (onUploadSuccess) {
-        onUploadSuccess(dbData); // Pass the new record (including its ID and image_url)
-      }
-      setFile(null); // Reset file input
-
+      setFile(null);
+      if (onUploadSuccess) onUploadSuccess(dbData);
     } catch (err) {
-      console.error('Error during upload process:', err);
+      console.error('🚨 Upload Error:', err);
       setMessage(`Upload failed: ${err.message}`);
       setUploading(false);
       if (onUploadError) onUploadError(err.message);
@@ -87,17 +89,20 @@ function ImageUpload({ onUploadSuccess, onUploadStart, onUploadError }) {
   return (
     <div className="image-upload-container">
       <h3>Upload Crop Image</h3>
-      <input 
-        type="file" 
-        accept="image/png, image/jpeg, image/jpg" 
-        onChange={handleFileChange} 
-        disabled={uploading} 
-        aria-label="Select crop image"
+      <input
+        type="file"
+        accept="image/png, image/jpeg"
+        onChange={handleFileChange}
+        disabled={uploading}
       />
       <button onClick={handleUpload} disabled={uploading || !file}>
         {uploading ? 'Uploading...' : 'Upload & Analyze'}
       </button>
-      {message && <p className={`message ${message.startsWith('Upload failed') ? 'error-message' : 'success-message'}`}>{message}</p>}
+      {message && (
+        <p className={`message ${message.includes('failed') ? 'error-message' : 'success-message'}`}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }
